@@ -3,7 +3,7 @@ import spacy
 nlp = spacy.load("en_core_web_sm")
 
 text = ""
-with open("carry-on.txt") as f:
+with open("input/carry-on.txt") as f:
   text = f.read()
   text = text.replace("\n", " ")
 
