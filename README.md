@@ -1,6 +1,6 @@
 # sunday in the sunday in the
 
-Based on Georges Seurat's painting "A Sunday on La Grande Jatte" by Georges Seurat and Stephen Sondheim's musical "Sunday in the Park with George". The code reads the image of the painting, pixel by pixel (as close as the machine can get to the point-by-point style of painting), and generates text based on words and punctuation provided by the lyrics of the musical.
+Based on Georges Seurat's painting "A Sunday Afternoon on the Island of La Grande Jatte" by Georges Seurat and Stephen Sondheim's musical "Sunday in the Park with George". The code reads the image of the painting, pixel by pixel (as close as the machine can get to the point-by-point style of painting), and generates text based on words and punctuation provided by the lyrics of the musical.
 
 ## Install
 
