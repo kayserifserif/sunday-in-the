@@ -15,3 +15,8 @@ pip install -r requirements.txt
 ```
 python points.py
 ```
+
+## Attribution
+
+- Lyrics from [Genius.com](https://genius.com/albums/Stephen-sondheim/Sunday-in-the-park-with-george-original-cast-recording)
+- Image from [Wikimedia](https://commons.wikimedia.org/wiki/File:Georges_Seurat_-_A_Sunday_on_La_Grande_Jatte_--_1884_-_Google_Art_Project.jpg)
