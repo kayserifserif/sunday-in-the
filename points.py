@@ -37,7 +37,7 @@ with open("input/sunday.txt") as f:
     val = round(product / maxval * len(words))
     word = words[val]
 
-    if i > 0 and not i % width == 0 and not re.match(r"[,.:!?]", word):
+    if i > 0 and (i - 1) % width != 0 and not re.match(r"[,.:!?]", word):
       text += " "
     text += words[val]
 
