@@ -1,25 +1,17 @@
-# nanogenmo-2022
+# sunday in the sunday in the
+
+Based on Georges Seurat's painting "A Sunday on La Grande Jatte" by Georges Seurat and Stephen Sondheim's musical "Sunday in the Park with George". The code reads the image of the painting, pixel by pixel (as close as the machine can get to the point-by-point style of painting), and generates text based on words and punctuation provided by the lyrics of the musical.
 
 ## Install
 
-Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
-
-Install [spaCy](https://spacy.io/usage) (instructions below for macOS):
-
 ```
-conda install -c conda-forge spacy
-python -m spacy download en_core_web_sm
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
-## Setup
+## Run
 
 ```
-conda create -n venv
-conda activate venv
-```
-
-## Running
-
-```
-python main.py
+python points.py
 ```
