@@ -13,7 +13,7 @@ myRandom = random.Random(SEED)
 DOWNSAMPLE_AMT = 10
 BLUR_AMT = 4
 
-TOP_COLORS_NUM = 10
+PALETTE_NUM = 10
 
 words = []
 punct = []
@@ -51,6 +51,41 @@ def tuple_to_word(tup, words):
   index = round(pixel / MAX_VAL * len(words))
   word = words[index]
   return word
+
+def generate_palette(img, output_dir):
+  pixels = list(img.getdata())
+  palette = []
+  colors_by_freq = [item for items, c in Counter(pixels).most_common() for item in [items] * c]
+  MIN_SAT = 50
+  MIN_DIFF = 20
+  # go through top colors
+  for color in colors_by_freq:
+    # check if we have enough colors already
+    if len(palette) >= PALETTE_NUM:
+      break
+    # check if color is already in top colors
+    if color in palette:
+      continue
+    # check if color is far enough away from grey
+    if abs(color[0] - color[1]) < MIN_SAT and abs(color[1] - color[0]) < MIN_SAT and abs(color[2] - color[0]) < MIN_SAT:
+      continue
+    # check if color is different enough from other colors
+    if len(palette) > 0:
+      diff_enough = True
+      for other_color in palette:
+        if abs(other_color[0] - color[0]) < MIN_DIFF and abs(other_color[1] - color[1]) < MIN_DIFF and abs(other_color[2] - color[2]) < MIN_DIFF:
+          diff_enough = False
+      if not diff_enough:
+        continue
+    # good enough! add it
+    palette.append(color)
+    # generate image of solid color
+    color_img = Image.new("RGB", (100, 100), color=color)
+    if not os.path.exists(f"{output_dir}/colors"):
+      os.mkdir(f"{output_dir}/colors")
+    with open(f"{output_dir}/colors/{str(color)}.png", "wb") as f:
+      color_img.save(f)
+  return palette
 
 with open("input/sunday.txt") as f:
   lyrics = " ".join(f.read().splitlines())
@@ -124,43 +159,7 @@ with open("input/sunday.txt") as f:
           text += pickPunct(end_of_sent=True)
         text += "\n"
 
-    orig_pixels = list(crop.getdata())
-    top_colors = []
-    top_colors_names = []
-    pixels_by_freq = [item for items, c in Counter(orig_pixels).most_common() for item in [items] * c]
-    MIN_SAT = 50
-    MIN_DIFF = 20
-    # go through top colors
-    for pixel in pixels_by_freq:
-      # check if we have enough colors already
-      if len(top_colors) >= TOP_COLORS_NUM:
-        break
-      # check if color is already in top colors
-      if pixel in top_colors:
-        continue
-      # check if color is far enough away from grey
-      if abs(pixel[0] - pixel[1]) < MIN_SAT and abs(pixel[1] - pixel[0]) < MIN_SAT and abs(pixel[2] - pixel[0]) < MIN_SAT:
-        continue
-      # check if color is different enough from other colors
-      if len(top_colors) > 0:
-        diff_enough = True
-        for other_color in top_colors:
-          if abs(other_color[0] - pixel[0]) < MIN_DIFF and abs(other_color[1] - pixel[1]) < MIN_DIFF and abs(other_color[2] - pixel[2]) < MIN_DIFF:
-            diff_enough = False
-        if not diff_enough:
-          continue
-      # good enough! add it
-      top_colors.append(pixel)
-      api_link = f"https://www.thecolorapi.com/id?rgb=rgb{pixel}"
-      color_info = requests.get(api_link).json()
-      color_hex = f"0x{color_info['hex']['clean']}"
-      color_name = color_info["name"]["value"]
-      top_colors_names.append(color_name)
-      color_img = Image.new("RGB", (100, 100), color=pixel)
-      if not os.path.exists(f"output/{run}/colors"):
-        os.mkdir(f"output/{run}/colors")
-      with open(f"output/{run}/colors/{color_hex}.png", "wb") as f:
-        color_img.save(f)
+    palette = generate_palette(crop, f"output/{run}")
 
     log = "date=" + now.strftime("%Y-%m-%d %H:%m:%S")
     log += "\n"
@@ -174,8 +173,8 @@ with open("input/sunday.txt") as f:
     log += "\n"
     log += "\n" + "words=" + str(len(re.split(r"\s+", text)))
     log += "\n"
-    for i in range(len(top_colors)):
-      log += "\n" + f"{str(top_colors[i])} {top_colors_names[i]} -> {tuple_to_word(top_colors[i], words)}"
+    for color in palette:
+      log += "\n" + f"{str(color)} -> {tuple_to_word(color, words)}"
 
     with open(f"output/{run}/sondrat.txt", "w") as f:
       f.write(text)
