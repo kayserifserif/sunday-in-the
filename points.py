@@ -122,7 +122,9 @@ with open("input/sunday.txt") as f:
     crop = img.crop(box)
     # blur = crop.filter(ImageFilter.GaussianBlur(BLUR_AMT))
     # pixels = list(blur.getdata())
-    downsampled = img.resize((round(w / DOWNSAMPLE_AMT), round(h / DOWNSAMPLE_AMT)))
+    down_w = round(w / DOWNSAMPLE_AMT)
+    down_h = round(h / DOWNSAMPLE_AMT)
+    downsampled = img.resize((down_w, down_h))
     pixels = list(downsampled.getdata())
 
     text = ""
@@ -161,20 +163,31 @@ with open("input/sunday.txt") as f:
 
     palette = generate_palette(crop, f"output/{run}")
 
-    log = "date=" + now.strftime("%Y-%m-%d %H:%m:%S")
-    log += "\n"
-    log += "\n" + "seed=" + str(SEED)
-    log += "\n" + "blur=" + str(BLUR_AMT)
-    log += "\n"
-    log += "\n" + "left=" + str(x)
-    log += "\n" + "top=" + str(y)
-    log += "\n" + "right=" + str(x + w)
-    log += "\n" + "bottom=" + str(y + h)
-    log += "\n"
-    log += "\n" + "words=" + str(len(re.split(r"\s+", text)))
-    log += "\n"
-    for color in palette:
-      log += "\n" + f"{str(color)} -> {tuple_to_word(color, words)}"
+    # logging
+    log_info = {
+      "run": {
+        "datetime": now.strftime("%Y-%m-%d %H:%m:%S"),
+        "seed": str(SEED)
+      },
+      "image": {
+        "coords": str((x, y, x + w, y + h)),
+        "downsize": str((down_w, down_h))
+      },
+      "text": {
+        "words": str(len(re.split(r"\s+", text)))
+      },
+      "palette": {}
+    }
+    for i in range(len(palette)):
+      color_word = tuple_to_word(palette[i], words)
+      log_info["palette"][color_word] = str(palette[i])
+    log = ""
+    for category in log_info:
+      if len(log) > 0:
+        log += "\n"
+      log += category.upper() + "\n"
+      for key in log_info[category]:
+        log += key + "=" + log_info[category][key] + "\n"
 
     with open(f"output/{run}/sondrat.txt", "w") as f:
       f.write(text)
