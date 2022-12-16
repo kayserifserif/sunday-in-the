@@ -4,9 +4,16 @@ import random
 import math
 import datetime
 import os, os.path
+from collections import Counter
+import requests
 
 SEED = 0
 myRandom = random.Random(SEED)
+
+DOWNSAMPLE_AMT = 10
+BLUR_AMT = 4
+
+TOP_COLORS_NUM = 10
 
 words = []
 punct = []
@@ -18,7 +25,8 @@ PUNCT_PCT = 0.1 # how much punctuation to add between words
 to_capitalise = ["i", "i'm", "george", "georges", "georgie", "seurat", "sunday", "sundays", "god",
   "jules", "harriet", "billy", "webster", "charles", "redmond", "texas", "lee", "randolph", "blair", "henry", "marie"]
 
-MAX_VAL = 255 * 255 * 255
+# MAX_VAL = 255 * 255 * 255
+MAX_VAL = 255 * 3
 # NUM_PAGES = 5
 NUM_PAGES = 1
 ASPECT = 0.65 # multiply by width to get height (in landscape orientation)
@@ -36,6 +44,13 @@ def pickPunct(end_of_sent=False):
     return random.choice(SENT_END_PUNCT)
   # return PUNCT[math.floor(random.random() * len(PUNCT))]
   return random.choice(PUNCT)
+
+def tuple_to_word(tup, words):
+  pixel = sum(tup)
+  # map to an index of the word list
+  index = round(pixel / MAX_VAL * len(words))
+  word = words[index]
+  return word
 
 with open("input/sunday.txt") as f:
   lyrics = " ".join(f.read().splitlines())
@@ -59,16 +74,22 @@ with open("input/sunday.txt") as f:
   # img = Image.open("input/seurat-4096.jpg")
   img = Image.open("input/tile-1.jpg")
   for page in range(NUM_PAGES):
-    x = 200
-    y = 150
-    w = 100
-    h = round(w * ASPECT)
+    # x = 200
+    # y = 150
+    # w = 100
+    # h = round(w * ASPECT)
+    x = 0
+    y = 0
+    w = 512
+    h = 512
     page_id = f"{x}-{y}-{w}-{h}"
     box = (x, y, x + w, y + h)
     crop = img.crop(box)
-    blur = crop.filter(ImageFilter.GaussianBlur(4))
-    # pixels = list(crop.getdata())
-    pixels = list(blur.getdata())
+    # blur = crop.filter(ImageFilter.GaussianBlur(BLUR_AMT))
+    # pixels = list(blur.getdata())
+    downsampled = img.resize((round(w / DOWNSAMPLE_AMT), round(h / DOWNSAMPLE_AMT)))
+    pixels = list(downsampled.getdata())
+
     text = ""
     for i in range(len(pixels)):
       start_of_para = i == 0 or re.match("\n", text[-1])
@@ -83,18 +104,12 @@ with open("input/sunday.txt") as f:
         token = pickPunct()
       else:
         # get value from pixel
-        tup = pixels[i]
-        product = 1
-        for num in tup:
-          product *= num
-        # map that to an index of the word list
-        index = round(product / MAX_VAL * len(words))
-        token = words[index]
-        if start_of_sent or token == "i" or token == "i'm": # capitalise word, if at start of sentence
+        token = tuple_to_word(pixels[i], words)
+        if start_of_sent or token in to_capitalise: # capitalise word, if at start of sentence
           token = token[0].upper() + token[1:]
 
       # skip if repeating word
-      if not is_punct and text[-len(token):].lower() == token:
+      if not is_punct and text[-len(token):].lower() == token.lower():
         continue
 
       # add space before, if word
@@ -109,16 +124,64 @@ with open("input/sunday.txt") as f:
           text += pickPunct(end_of_sent=True)
         text += "\n"
 
-    metadata = "date=" + now.strftime("%Y-%m-%d %H:%m:%S")
-    metadata += "\n" + "seed=" + str(SEED)
-    metadata += "\n" + "left=" + str(x)
-    metadata += "\n" + "top=" + str(y)
-    metadata += "\n" + "right=" + str(x + w)
-    metadata += "\n" + "bottom=" + str(y + h)
+    orig_pixels = list(crop.getdata())
+    top_colors = []
+    top_colors_names = []
+    pixels_by_freq = [item for items, c in Counter(orig_pixels).most_common() for item in [items] * c]
+    MIN_SAT = 50
+    MIN_DIFF = 20
+    # go through top colors
+    for pixel in pixels_by_freq:
+      # check if we have enough colors already
+      if len(top_colors) >= TOP_COLORS_NUM:
+        break
+      # check if color is already in top colors
+      if pixel in top_colors:
+        continue
+      # check if color is far enough away from grey
+      if abs(pixel[0] - pixel[1]) < MIN_SAT and abs(pixel[1] - pixel[0]) < MIN_SAT and abs(pixel[2] - pixel[0]) < MIN_SAT:
+        continue
+      # check if color is different enough from other colors
+      if len(top_colors) > 0:
+        diff_enough = True
+        for other_color in top_colors:
+          if abs(other_color[0] - pixel[0]) < MIN_DIFF and abs(other_color[1] - pixel[1]) < MIN_DIFF and abs(other_color[2] - pixel[2]) < MIN_DIFF:
+            diff_enough = False
+        if not diff_enough:
+          continue
+      # good enough! add it
+      top_colors.append(pixel)
+      api_link = f"https://www.thecolorapi.com/id?rgb=rgb{pixel}"
+      color_info = requests.get(api_link).json()
+      color_hex = f"0x{color_info['hex']['clean']}"
+      color_name = color_info["name"]["value"]
+      top_colors_names.append(color_name)
+      color_img = Image.new("RGB", (100, 100), color=pixel)
+      if not os.path.exists(f"output/{run}/colors"):
+        os.mkdir(f"output/{run}/colors")
+      with open(f"output/{run}/colors/{color_hex}.png", "wb") as f:
+        color_img.save(f)
 
-    with open(f"output/{run}/{page_id}.txt", "w") as f:
+    log = "date=" + now.strftime("%Y-%m-%d %H:%m:%S")
+    log += "\n"
+    log += "\n" + "seed=" + str(SEED)
+    log += "\n" + "blur=" + str(BLUR_AMT)
+    log += "\n"
+    log += "\n" + "left=" + str(x)
+    log += "\n" + "top=" + str(y)
+    log += "\n" + "right=" + str(x + w)
+    log += "\n" + "bottom=" + str(y + h)
+    log += "\n"
+    log += "\n" + "words=" + str(len(re.split(r"\s+", text)))
+    log += "\n"
+    for i in range(len(top_colors)):
+      log += "\n" + f"{str(top_colors[i])} {top_colors_names[i]} -> {tuple_to_word(top_colors[i], words)}"
+
+    with open(f"output/{run}/sondrat.txt", "w") as f:
       f.write(text)
-    with open(f"output/{run}/{page_id}.jpg", "w") as f:
+    with open(f"output/{run}/seurat.jpg", "w") as f:
       crop.save(f)
-    with open(f"output/{run}/metadata.txt", "w") as f:
-      f.write(metadata)
+    with open(f"output/{run}/seurat-downsampled.jpg", "w") as f:
+      downsampled.save(f)
+    with open(f"output/{run}/log.txt", "w") as f:
+      f.write(log)
