@@ -125,9 +125,9 @@ with open("input/sunday.txt") as f:
       # check if start of paragraph: if it's the first pixel, or if the last character was a line break
       start_of_para = i == 0 or re.match("\n", text[-1])
       # check if start of sentence: if it's the first pixel, or if the last character was a sentence-ending punctuation mark
-      start_of_sent = i == 0 or start_of_para or re.match(r"[.!?]", text[-1])
+      start_of_sent = i == 0 or start_of_para or re.match(re.compile(f"[{SENT_END_PUNCT}]"), text[-1])
       # check if after punctuation: if it's after the first pixels and the last character was a punctuation mark
-      after_punct = i > 0 and re.match(r"[,.:!?…\-—–]", text[-1])
+      after_punct = i > 0 and re.match(re.compile(f"[{PUNCT}]"), text[-1])
 
       # pick either punctuation or word
       token = ""
@@ -153,7 +153,7 @@ with open("input/sunday.txt") as f:
       # add newlines, if at end of row
       if i > 0 and i % w == 0:
         if not is_punct:
-          text += pickPunct(end_of_sent=True)
+          text += pickPunct(end_of_sent=True) # add sentence-ending punctuation, if word
         text += "\n"
 
     # generate palette (top unique-enough colors) from image
