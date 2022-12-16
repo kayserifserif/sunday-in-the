@@ -89,22 +89,18 @@ def generate_palette(img, output_dir):
 
 with open("input/sunday.txt") as f:
   lyrics = " ".join(f.read().splitlines())
-  trim = re.sub(r"[\[\]()\"/&]|#[0-9]", " ", lyrics) # square brackets, parentheses, double quotes, hyphens and dashes, slashes, ampersands, #1s etc
-  trim = re.sub(r" [b-hj-z] |[\-—–]", " ", trim) # single letters that aren't A or I
-  ellipsis = re.sub(r"\.\.\.", "…", trim) # replace three dots with ellipsis character
 
-  tokens = re.sub(r"[,.:!?…]", "", ellipsis)
-  tokens = re.split(" ", tokens)
-  tokens = [x for x in tokens if x]
-  nonames = [x for x in tokens if not re.match(r"\b[A-Z]{2,}\b", x)]
-  lowercase = [x.lower() for x in nonames]
-  nodupes = []
-  [nodupes.append(x) for x in lowercase if x not in nodupes]
-  # words = list(set(lowercase))
-  # words = [x for x in words if x not in PUNCT]
+  # clean up lyrics and get a list of all unique words
+  words = re.sub(r"[\[\]()\"/&]|#[0-9]", " ", lyrics) # square brackets, parentheses, double quotes, hyphens and dashes, slashes, ampersands, #1s etc
+  words = re.sub(r" [b-hj-z] |[\-—–]", " ", words) # single letters that aren't A or I
+  words = re.sub(r"\.\.\.", "…", words) # replace three dots with ellipsis character
+  words = re.sub(r"[,.:!?…]", "", words) # remove punctuation
+  words = [x for x in re.split(" ", words) if x] # remove empty tokens
+  words = [x for x in words if not re.match(r"\b[A-Z]{2,}\b", x)] # remove character headings
+  words = [x.lower() for x in words] # make everything lowercase
+  nodupes = [] # remove duplicates
+  [nodupes.append(x) for x in words if x not in nodupes]
   words = [x for x in nodupes if x not in PUNCT]
-  # myRandom.shuffle(words)
-  # print(words)
 
   # img = Image.open("input/seurat-4096.jpg")
   img = Image.open("input/tile-1.jpg")
