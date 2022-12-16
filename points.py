@@ -102,31 +102,31 @@ with open("input/sunday.txt") as f:
   [nodupes.append(x) for x in words if x not in nodupes]
   words = [x for x in nodupes if x not in PUNCT]
 
+  # read the image
   # img = Image.open("input/seurat-4096.jpg")
   img = Image.open("input/tile-1.jpg")
   for page in range(NUM_PAGES):
-    # x = 200
-    # y = 150
-    # w = 100
-    # h = round(w * ASPECT)
+    # make a box to crop the image to
     x = 0
     y = 0
     w = 512
     h = 512
-    page_id = f"{x}-{y}-{w}-{h}"
-    box = (x, y, x + w, y + h)
-    crop = img.crop(box)
-    # blur = crop.filter(ImageFilter.GaussianBlur(BLUR_AMT))
-    # pixels = list(blur.getdata())
+    crop = img.crop((x, y, x + w, y + h))
+
+    # downsample the cropped image to get a more manageable list of pixels
     down_w = round(w / DOWNSAMPLE_AMT)
     down_h = round(h / DOWNSAMPLE_AMT)
     downsampled = img.resize((down_w, down_h))
     pixels = list(downsampled.getdata())
 
+    # start putting together the text
     text = ""
     for i in range(len(pixels)):
+      # check if start of paragraph: if it's the first pixel, or if the last character was a line break
       start_of_para = i == 0 or re.match("\n", text[-1])
+      # check if start of sentence: if it's the first pixel, or if the last character was a sentence-ending punctuation mark
       start_of_sent = i == 0 or start_of_para or re.match(r"[.!?]", text[-1])
+      # check if after punctuation: if it's after the first pixels and the last character was a punctuation mark
       after_punct = i > 0 and re.match(r"[,.:!?…\-—–]", text[-1])
 
       # pick either punctuation or word
@@ -136,7 +136,7 @@ with open("input/sunday.txt") as f:
         is_punct = True
         token = pickPunct()
       else:
-        # get value from pixel
+        # get a word from pixel value
         token = tuple_to_word(pixels[i], words)
         if start_of_sent or token in to_capitalise: # capitalise word, if at start of sentence
           token = token[0].upper() + token[1:]
@@ -152,14 +152,14 @@ with open("input/sunday.txt") as f:
 
       # add newlines, if at end of row
       if i > 0 and i % w == 0:
-        # text += "\n\n"
         if not is_punct:
           text += pickPunct(end_of_sent=True)
         text += "\n"
 
+    # generate palette (top unique-enough colors) from image
     palette = generate_palette(crop, f"output/{run}")
 
-    # logging
+    # log some info
     log_info = {
       "run": {
         "datetime": now.strftime("%Y-%m-%d %H:%m:%S"),
@@ -185,6 +185,7 @@ with open("input/sunday.txt") as f:
       for key in log_info[category]:
         log += key + "=" + log_info[category][key] + "\n"
 
+    # write files
     with open(f"output/{run}/sondrat.txt", "w") as f:
       f.write(text)
     with open(f"output/{run}/seurat.jpg", "w") as f:
