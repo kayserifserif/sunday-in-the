@@ -10,7 +10,8 @@ import requests
 SEED = 0
 myRandom = random.Random(SEED)
 
-DOWNSAMPLE_AMT = 10
+# DOWNSAMPLE_AMT = 10
+DOWNSAMPLE_AMT = 50
 BLUR_AMT = 4
 
 PALETTE_NUM = 10
@@ -22,8 +23,9 @@ SENT_END_PUNCT = ".!?"
 CLAUSE_END_PUNCT = SENT_END_PUNCT + ",:"
 PUNCT = CLAUSE_END_PUNCT + "—"
 PUNCT_PCT = 0.1 # how much punctuation to add between words
-to_capitalise = ["i", "i'm", "george", "georges", "georgie", "seurat", "sunday", "sundays", "god",
-  "jules", "harriet", "billy", "webster", "charles", "redmond", "texas", "lee", "randolph", "blair", "henry", "marie"]
+to_capitalise = ["i", "i'm", "i'd", "i've", "george", "georges", "georgie", "george's", "seurat", "sunday", "sundays", "god", "louis",
+  "louis's", "jules", "harriet", "billy", "webster", "charles", "redmond", "texas", "lee", "randolph", "blair", "henry", "marie",
+  "franz"]
 
 # MAX_VAL = 255 * 255 * 255
 MAX_VAL = 255 * 3
@@ -41,11 +43,16 @@ def pickPunct(end_of_sent: bool = False):
     return random.choice(SENT_END_PUNCT)
   return random.choice(PUNCT)
 
-def tuple_to_word(tup: tuple, words: list) -> str:
-  pixel = sum(tup)
-  # map to an index of the word list
-  index = round(pixel / MAX_VAL * len(words))
-  word = words[index]
+# def tuple_to_word(tup: tuple, words: list) -> str:
+#   pixel = sum(tup)
+#   # map to an index of the word list
+#   index = round(pixel / MAX_VAL * len(words))
+#   word = words[index]
+#   return word
+def color_to_word(colors: list, words: list, color) -> str:
+  color_freq = colors.index(color) / len(colors)
+  word_index = math.floor(color_freq * len(words))
+  word = words[word_index]
   return word
 
 def get_words(in_file: str) -> list:
@@ -61,13 +68,15 @@ def get_words(in_file: str) -> list:
     words = [x for x in re.split(" ", words) if x] # remove empty tokens
     words = [x for x in words if not re.match(r"\b[A-Z]{2,}\b", x)] # remove character headings
     words = [x.lower() for x in words] # make everything lowercase
-    nodupes = [] # remove duplicates
-    [nodupes.append(x) for x in words if x not in nodupes]
-    words = [x for x in nodupes if x not in PUNCT]
+    words_by_freq = [item for items, c in Counter(words).most_common() for item in [items] * c]
+    # nodupes = [] # remove duplicates
+    # [nodupes.append(x) for x in words if x not in nodupes]
+    # words = [x for x in nodupes if x not in PUNCT]
     
-    return words
+    # return words
+    return words_by_freq
 
-def generate_text(words: list, pixels: list, box: tuple) -> str:
+def generate_text(words: list, pixels: list, box: tuple, colors: list) -> str:
   '''Generates a text that maps the pixel list to the word list.'''
   # calculate dimensions
   (left, top, right, bottom) = box
@@ -91,7 +100,8 @@ def generate_text(words: list, pixels: list, box: tuple) -> str:
       token = pickPunct()
     else:
       # get a word from pixel value
-      token = tuple_to_word(pixels[i], words)
+      # token = tuple_to_word(pixels[i], words)
+      token = color_to_word(colors, words, pixels[i])
       if start_of_sent or token in to_capitalise: # capitalise word, if at start of sentence
         token = token[0].upper() + token[1:]
 
@@ -156,13 +166,15 @@ def main():
   words = get_words("input/sunday.txt")
 
   # read the image
-  # img = Image.open("input/seurat-4096.jpg")
-  img = Image.open("input/tile-1.jpg")
+  img = Image.open("input/seurat-4096.jpg")
+  # img = Image.open("input/tile-1.jpg")
   # make a box to crop the image to
   x = 0
   y = 0
-  w = 512
-  h = 512
+  # w = 512
+  w = 4096
+  # h = 512
+  h = 2727
   box = (x, y, x + w, y + h)
   crop = img.crop(box)
 
@@ -172,11 +184,14 @@ def main():
   downsampled = img.resize((down_w, down_h))
   pixels = list(downsampled.getdata())
 
+  # get colors in image
+  # colors = get_colors(crop)
+  colors = get_colors(downsampled)
+
   # start putting together the text
-  text = generate_text(words, pixels, box)
+  text = generate_text(words, pixels, downsampled.getbbox(), colors)
 
   # generate palette (top unique-enough colors) from image
-  colors = get_colors(crop)
   palette = generate_palette(colors, f"output/{run}")
 
   # log some info
@@ -199,7 +214,8 @@ def main():
     }
   }
   for i in range(len(palette)):
-    color_word = tuple_to_word(palette[i], words)
+    # color_word = tuple_to_word(palette[i], words)
+    color_word = color_to_word(colors, words, palette[i])
     log_info["palette"][color_word] = str(palette[i])
   log = ""
   for category in log_info:
