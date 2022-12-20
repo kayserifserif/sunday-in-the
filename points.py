@@ -36,10 +36,9 @@ print("Output at", os.path.dirname(f"output/{run}/"))
 os.makedirs(os.path.dirname(f"output/{run}/"), exist_ok=True)
 
 def pickPunct(end_of_sent: bool = False):
+  '''Returns a random choice of punctuation. If `end_of_sent` is set to True, it will only return sentence-ending punctuation.'''
   if end_of_sent:
-    # return SENT_END_PUNCT[math.floor(random.random() * len(SENT_END_PUNCT))]
     return random.choice(SENT_END_PUNCT)
-  # return PUNCT[math.floor(random.random() * len(PUNCT))]
   return random.choice(PUNCT)
 
 def tuple_to_word(tup: tuple, words: list) -> str:
@@ -50,6 +49,7 @@ def tuple_to_word(tup: tuple, words: list) -> str:
   return word
 
 def get_words(in_file: str) -> list:
+  '''Returns a list of unique words from the input file.'''
   with open(in_file) as f:
     lyrics = " ".join(f.read().splitlines())
 
@@ -68,6 +68,7 @@ def get_words(in_file: str) -> list:
     return words
 
 def generate_text(words: list, pixels: list, box: tuple) -> str:
+  '''Generates a text that maps the pixel list to the word list.'''
   # calculate dimensions
   (left, top, right, bottom) = box
   w = right - left
@@ -112,11 +113,13 @@ def generate_text(words: list, pixels: list, box: tuple) -> str:
   return text
 
 def get_colors(img: Image) -> list:
+  '''Returns a list of unique colors in the image, in descending order of frequency.'''
   pixels = list(img.getdata())
   colors_by_freq = [item for items, c in Counter(pixels).most_common() for item in [items] * c]
   return colors_by_freq
 
 def generate_palette(colors: list, output_dir: str) -> list:
+  '''Generates a palette of top colors from the given list of colors, and outputs color images to the output directory.'''
   MIN_SAT = 50
   MIN_DIFF = 20
   palette = []
